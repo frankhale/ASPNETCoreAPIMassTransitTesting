@@ -1,5 +1,10 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using GreenPipes;
+using MassTransit;
+using Messages;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 
 namespace API1.Integration.Tests
 {
@@ -10,6 +15,20 @@ namespace API1.Integration.Tests
         {
             webHostBuilder.ConfigureServices(services =>
             {
+                var transit = services.Where(d => d.ServiceType.Assembly.FullName.Contains("MassTransit")).ToList();
+                if (transit != null)
+                {
+                    foreach (var t in transit)
+                    {
+                        services.Remove(t);
+                    }
+                }
+
+                foreach(var hc in services.Where(x => x.ServiceType.FullName.Contains("HealthCheck")).ToList())
+                {
+                    services.Remove(hc);
+                }
+
                 // We need to replace the MassTransit config that is coming from the Startup 
                 // from our API1.
                 //
@@ -28,23 +47,19 @@ namespace API1.Integration.Tests
                 // The help on Testing looks promising but I still don't know how to configure my WebApplicationFactory 
                 // https://masstransit-project.com/usage/testing.html#test-harness
 
-                //services.AddMassTransit(x =>
-                //{
-                //    x.AddConsumer<MyMessageConsumer>();
-                //    x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
-                //    {
-                //        cfg.UseHealthCheck(provider);
-                //        //cfg.Host -> Needs to be InMemory ?????
-                //        cfg.ReceiveEndpoint("mymessage-endpoint", ep =>
-                //        {
-                //            ep.PrefetchCount = 16;
-                //            ep.UseMessageRetry(r => r.Interval(2, 100));
-                //            ep.ConfigureConsumer<MyMessageConsumer>(provider);
-                //        });
-                //    }));
-                //});
-                //services.AddMassTransitHostedService();
-                //services.AddSingleton<IBus>(provider => provider.GetRequiredService<IBusControl>());
+                services.AddMassTransit(x =>
+                {
+                    x.AddConsumer<MyMessageConsumer>();
+                    x.AddBus(provider => Bus.Factory.CreateUsingInMemory(cfg =>
+                    {
+                        cfg.ReceiveEndpoint("mymessage-endpoint", ep =>
+                        {
+                            ep.ConfigureConsumer<MyMessageConsumer>(provider);
+                        });
+                    }));
+                });
+                services.AddMassTransitHostedService();
+                services.AddSingleton<IBus>(provider => provider.GetRequiredService<IBusControl>());
             });
         }
     }
