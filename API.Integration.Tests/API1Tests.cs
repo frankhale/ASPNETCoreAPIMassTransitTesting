@@ -1,7 +1,8 @@
 using FluentAssertions;
-using MassTransit.Testing;
+using MassTransit;
 using Messages;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -10,14 +11,24 @@ using Xunit;
 
 namespace API1.Integration.Tests
 {
-    public class API1Tests : IClassFixture<API1ServiceSetup<Startup>>
+    public class API1Tests : IClassFixture<WebApplicationFactory<Startup>>
     {
-        private readonly API1ServiceSetup<Startup> _factory;
         private HttpClient _client;
+        private readonly WebApplicationFactory<Startup> _factory;
+        private readonly FakeMassTransitBus _fakeBus;
 
-        public API1Tests(API1ServiceSetup<Startup> factory)
+        public API1Tests(WebApplicationFactory<Startup> factory)
         {
-            _factory = factory;
+            _fakeBus = new FakeMassTransitBus();
+
+            _factory = factory.WithWebHostBuilder(config =>
+            {
+                config.ConfigureServices(services =>
+                {
+                    services.AddSingleton<IBus>(_fakeBus);
+                });
+            });
+
             _client = _factory.CreateClient(new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = true
@@ -27,31 +38,19 @@ namespace API1.Integration.Tests
         [Fact]
         public async Task Get_GetDefaultEndPoint_ReturnsOk()
         {
-            var harness = new InMemoryTestHarness();
-            var consumerHarness = harness.Consumer<MyMessageConsumer>("mymessage-endpoint");
+            // Arrange
+            // Act
+            var apiResults = await _client.GetAsync("/api/default");
+            var apiResponse = await apiResults.Content.ReadAsStringAsync();
 
-            await harness.Start();
-            try
-            {
-                // Setting up the MassTransit Test Harness looks ok but I still have the issue
-                // with setting up the WebApplicationFactory (see TestSetup.cs for more details)
-                // https://masstransit-project.com/usage/testing.html#test-harness
+            // Assert
+            apiResults.StatusCode.Should().Be(HttpStatusCode.OK);
+            apiResponse.Should().Be("API1");
 
-                // Arrange
-                // Act
-                var apiResults = await _client.GetAsync("/api/default");
-                var apiResponse = await apiResults.Content.ReadAsStringAsync();
+            _fakeBus.Messages.Count().Should().Be(1);
+            _fakeBus.Messages.FirstOrDefault().As<MyMessage>().Value.Should().Be("Message sent from API1");
 
-                // Assert
-                apiResults.StatusCode.Should().Be(HttpStatusCode.OK);
-                apiResponse.Should().Be("API1");
-
-                consumerHarness.Consumed.Select<MyMessage>().FirstOrDefault().Should().NotBeNull();
-            }
-            finally
-            {
-                await harness.Stop();
-            }
+            _fakeBus.ClearMessages();
         }
     }
 }

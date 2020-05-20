@@ -1,70 +1,159 @@
 ﻿using GreenPipes;
 using MassTransit;
-using Messages;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
+using MassTransit.EndpointConfigurators;
+using MassTransit.Topology;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace API1.Integration.Tests
 {
-    public class API1ServiceSetup<TStartup>
-        : WebApplicationFactory<TStartup> where TStartup : class
+    public class FakeMassTransitBus : IBusControl
     {
-        protected override void ConfigureWebHost(IWebHostBuilder webHostBuilder)
+        public List<object> Messages { get; } = new List<object>();
+
+        public void ClearMessages()
         {
-            webHostBuilder.ConfigureServices(services =>
-            {
-                var transit = services.Where(d => d.ServiceType.Assembly.FullName.Contains("MassTransit")).ToList();
-                if (transit != null)
-                {
-                    foreach (var t in transit)
-                    {
-                        services.Remove(t);
-                    }
-                }
-
-                foreach(var hc in services.Where(x => x.ServiceType.FullName.Contains("HealthCheck")).ToList())
-                {
-                    services.Remove(hc);
-                }
-
-                // We need to replace the MassTransit config that is coming from the Startup 
-                // from our API1.
-                //
-                // We want to configure MassTransit using an InMemory transport and be a
-                // MyMessageConsumer so that we can intercept the message
-                //
-                // I don't know how to do that. I couldn't find any examples online to 
-                // demonstrate how to properly do it.
-                //
-                // I tried doing a brute force remove of all services that's assembly started with 
-                // MassTransit. Once I did that HealthChecks complained that I was configuring it twice.
-                // 
-                // I brute force removed HealthChecks and then I got an error saying the MassTransit bus
-                // was already started. 
-
-                // The help on Testing looks promising but I still don't know how to configure my WebApplicationFactory 
-                // https://masstransit-project.com/usage/testing.html#test-harness
-                                
-                services.AddMassTransit(x =>
-                {
-                    x.AddConsumer<MyMessageConsumer>();
-                    x.AddBus(provider => Bus.Factory.CreateUsingInMemory(cfg =>
-                    {
-                        cfg.ReceiveEndpoint("mymessage-endpoint", ep =>
-                        {                            
-                            ep.UseMessageRetry(r => r.Interval(2, 100));
-                            ep.ConfigureConsumer<MyMessageConsumer>(provider);
-                        });
-                    }));
-                });
-                services.AddMassTransitHostedService();
-                services.AddSingleton<IBus>(provider => provider.GetRequiredService<IBusControl>());
-
-                services.BuildServiceProvider();
-            });
+            Messages.Clear();
         }
-    }
+
+        public Task Publish<T>(T message, CancellationToken cancellationToken = default) where T : class
+        {
+            Messages.Add(message);
+            return Task.CompletedTask;
+        }
+
+        #region FAKE YOU LATER
+        public Uri Address => throw new NotImplementedException();
+
+        public IBusTopology Topology => throw new NotImplementedException();
+
+        public ConnectHandle ConnectConsumeMessageObserver<T>(IConsumeMessageObserver<T> observer) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectConsumeObserver(IConsumeObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectConsumePipe<T>(IPipe<ConsumeContext<T>> pipe) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectEndpointConfigurationObserver(IEndpointConfigurationObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectPublishObserver(IPublishObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public HostReceiveEndpointHandle ConnectReceiveEndpoint(IEndpointDefinition definition, IEndpointNameFormatter endpointNameFormatter, Action<IReceiveEndpointConfigurator> configureEndpoint = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public HostReceiveEndpointHandle ConnectReceiveEndpoint(string queueName, Action<IReceiveEndpointConfigurator> configureEndpoint)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectReceiveEndpointObserver(IReceiveEndpointObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectReceiveObserver(IReceiveObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectRequestPipe<T>(Guid requestId, IPipe<ConsumeContext<T>> pipe) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public ConnectHandle ConnectSendObserver(ISendObserver observer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ISendEndpoint> GetPublishSendEndpoint<T>() where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ISendEndpoint> GetSendEndpoint(Uri address)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Probe(ProbeContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<BusHandle> StartAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish<T>(T message, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish<T>(T message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish(object message, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish(object message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish(object message, Type messageType, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish(object message, Type messageType, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish<T>(object values, CancellationToken cancellationToken = default) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish<T>(object values, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task Publish<T>(object values, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
+    }    
 }
 

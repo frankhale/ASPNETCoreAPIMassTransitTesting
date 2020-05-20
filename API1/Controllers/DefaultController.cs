@@ -13,7 +13,7 @@ namespace API1.Controllers
 
         public DefaultController(IBus bus)
         {
-            _bus = bus;
+            _bus = bus;            
         }
 
         [HttpGet]
