@@ -46,22 +46,23 @@ namespace API1.Integration.Tests
 
                 // The help on Testing looks promising but I still don't know how to configure my WebApplicationFactory 
                 // https://masstransit-project.com/usage/testing.html#test-harness
-                services.AddHealthChecks();
-
+                                
                 services.AddMassTransit(x =>
                 {
                     x.AddConsumer<MyMessageConsumer>();
                     x.AddBus(provider => Bus.Factory.CreateUsingInMemory(cfg =>
                     {
-                        cfg.UseHealthCheck(provider);
                         cfg.ReceiveEndpoint("mymessage-endpoint", ep =>
-                        {
+                        {                            
+                            ep.UseMessageRetry(r => r.Interval(2, 100));
                             ep.ConfigureConsumer<MyMessageConsumer>(provider);
                         });
                     }));
                 });
                 services.AddMassTransitHostedService();
                 services.AddSingleton<IBus>(provider => provider.GetRequiredService<IBusControl>());
+
+                services.BuildServiceProvider();
             });
         }
     }
